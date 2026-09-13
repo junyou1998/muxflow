@@ -1,0 +1,30 @@
+# Virtual environments
+venv/
+**/venv/
+.env
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+dist/
+build/
+*.egg-info/
+
+# Operating System & IDE
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+.idea/
+.vscode/
+
+# Local test directories and logs
+*.log
+storage_test/
+config_test/
+scratch/
+.system_generated/
+config/*.json
+config/logs/

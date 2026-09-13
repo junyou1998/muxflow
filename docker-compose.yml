@@ -1,0 +1,23 @@
+version: "3.8"
+
+services:
+  muxflow:
+    image: junyou1998/muxflow:latest
+    build: .
+    container_name: muxflow
+    restart: unless-stopped
+    ports:
+      - "5800:5800"
+    environment:
+      - PUID=99
+      - PGID=100
+      - UMASK=022
+      - TZ=Asia/Taipei
+      - PORT=5800
+      - STORAGE_DIR=/storage
+      - CONFIG_DIR=/config
+    volumes:
+      # Map your host media storage path here (e.g. Unraid /mnt/user)
+      - /mnt/user:/storage
+      # Map your host appdata/config directory here
+      - ./config:/config

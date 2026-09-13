@@ -1,0 +1,40 @@
+<?xml version="1.0"?>
+<Container version="2">
+  <Name>MuxFlow</Name>
+  <Repository>junyou1998/muxflow:latest</Repository>
+  <Registry>https://hub.docker.com/r/junyou1998/muxflow</Registry>
+  <Network>bridge</Network>
+  <MyIP/>
+  <Shell>sh</Shell>
+  <Privileged>false</Privileged>
+  <Support>https://github.com/junyou1998/muxflow/issues</Support>
+  <Project>https://github.com/junyou1998/muxflow</Project>
+  <Overview>MuxFlow is a modern, responsive MKV batch muxing web suite powered by MKVToolNix (mkvmerge &amp; mkvpropedit). Designed for seamless desktop and mobile browser use. Features smart track filtering, subtitle/audio flag controls, font &amp; attachment injection, preset management, same-directory safety protection, and an automated job queue.&#xD;
+&#xD;
+[b]Features:[/b]&#xD;
+- Modern Web GUI with Dark &amp; Light themes&#xD;
+- Fast batch queue with real-time progress&#xD;
+- Smart audio &amp; subtitle track filtering and bulk language editing&#xD;
+- Font attachment folder scanning and injection&#xD;
+- Native MKVToolNix performance&#xD;
+- Safe output suffixing to protect original files&#xD;
+  </Overview>
+  <Category>MediaApp:Video MediaServer:Video Tools:Utilities</Category>
+  <WebUI>http://[IP]:[PORT:5800]/</WebUI>
+  <TemplateURL>https://raw.githubusercontent.com/junyou1998/muxflow/main/unraid-templates/muxflow.xml</TemplateURL>
+  <Icon>https://raw.githubusercontent.com/junyou1998/muxflow/main/frontend/logo.png</Icon>
+  <ExtraParams/>
+  <PostArgs/>
+  <CPUset/>
+  <DateInstalled/>
+  <DonateText/>
+  <DonateLink/>
+  <Requires/>
+  <Config Name="Web UI Port" Target="5800" Default="5800" Mode="tcp" Description="Container Web Port (Default: 5800)" Type="Port" Display="always" Required="true" Mask="false">5800</Config>
+  <Config Name="Media Storage Directory" Target="/storage" Default="/mnt/user/" Mode="rw" Description="Host path to your media files, subtitles, and font directories" Type="Path" Display="always" Required="true" Mask="false">/mnt/user/</Config>
+  <Config Name="App Configuration Directory" Target="/config" Default="/mnt/user/appdata/muxflow" Mode="rw" Description="Host path for persistent presets, logs, and user settings" Type="Path" Display="always" Required="true" Mask="false">/mnt/user/appdata/muxflow</Config>
+  <Config Name="PUID" Target="PUID" Default="99" Mode="" Description="Container User ID (Unraid standard: 99 nobody)" Type="Variable" Display="advanced" Required="false" Mask="false">99</Config>
+  <Config Name="PGID" Target="PGID" Default="100" Mode="" Description="Container Group ID (Unraid standard: 100 users)" Type="Variable" Display="advanced" Required="false" Mask="false">100</Config>
+  <Config Name="UMASK" Target="UMASK" Default="022" Mode="" Description="File permissions mask (Default: 022)" Type="Variable" Display="advanced" Required="false" Mask="false">022</Config>
+  <Config Name="Timezone" Target="TZ" Default="Asia/Taipei" Mode="" Description="Container Timezone" Type="Variable" Display="advanced" Required="false" Mask="false">Asia/Taipei</Config>
+</Container>

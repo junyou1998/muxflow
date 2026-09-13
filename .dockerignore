@@ -1,0 +1,13 @@
+.git/
+.github/
+backend/venv/
+**/venv/
+__pycache__/
+*.pyc
+.DS_Store
+*.log
+storage_test/
+config_test/
+unraid-templates/
+scratch/
+.system_generated/
