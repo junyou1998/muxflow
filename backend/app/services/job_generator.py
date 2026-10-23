@@ -278,9 +278,13 @@ class JobGenerator:
                 match = False
                 if s_id in keep_ids or f"Track {int(s_id):02d}" in keep_ids:
                     match = True
-                if s.get("language_name") in keep_langs or s.get("language") in keep_langs:
+                if s.get("language_name") in keep_langs or s.get("language") in keep_langs or s.get("language_ietf") in keep_langs:
                     match = True
                 if s.get("track_name") and s["track_name"] in keep_names:
+                    match = True
+                if not s.get("track_name") and ("繁中" in keep_names and s.get("language_ietf") in ["zh-Hant", "zh-TW", "zh-HK"]):
+                    match = True
+                if not s.get("track_name") and ("簡中" in keep_names and s.get("language_ietf") in ["zh-Hans", "zh-CN", "zh-SG"]):
                     match = True
                 if not match:
                     continue
@@ -299,7 +303,7 @@ class JobGenerator:
                 track = next((x for x in source_info["audios"] if str(x["id"]) == a_id), None)
                 if not track:
                     continue
-                match = (target == f"Track {int(a_id):02d}") or (target == track.get("language_name")) or (target == track.get("track_name"))
+                match = (target == f"Track {int(a_id):02d}") or (target == track.get("language_name")) or (target == track.get("track_name")) or (target == track.get("language_ietf")) or (target == track.get("language"))
                 if match:
                     cmd.extend(["--default-track-flag", f"{a_id}:yes"])
                 else:
@@ -311,7 +315,15 @@ class JobGenerator:
                 track = next((x for x in source_info["subtitles"] if str(x["id"]) == s_id), None)
                 if not track:
                     continue
-                match = (target == f"Track {int(s_id):02d}") or (target == track.get("language_name")) or (target == track.get("track_name"))
+                match = (
+                    (target == f"Track {int(s_id):02d}") or
+                    (target == track.get("language_name")) or
+                    (target == track.get("track_name")) or
+                    (target == track.get("language_ietf")) or
+                    (target == track.get("language")) or
+                    (not track.get("track_name") and target == "繁中" and track.get("language_ietf") in ["zh-Hant", "zh-TW", "zh-HK"]) or
+                    (not track.get("track_name") and target == "簡中" and track.get("language_ietf") in ["zh-Hans", "zh-CN", "zh-SG"])
+                )
                 if match:
                     cmd.extend(["--default-track-flag", f"{s_id}:yes"])
                 else:

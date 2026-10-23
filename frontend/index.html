@@ -1151,7 +1151,7 @@
                 <span>#{{ trk.id }} {{ trk.codec }}</span>
                 <span>{{ trk.channels }} {{ t('channels') }} ({{ trk.sampling_frequency }} Hz)</span>
               </div>
-              <p class="text-slate-500 dark:text-slate-400 text-xs">{{ t('language_label') }}: {{ trk.language_name }} ({{ trk.language }}) | {{ t('name_label') }}: {{ trk.track_name || t('none') }}</p>
+              <p class="text-slate-500 dark:text-slate-400 text-xs">{{ t('language_label') }}: {{ trk.language_name }} ({{ trk.language_ietf || trk.language }}) | {{ t('name_label') }}: {{ trk.track_name || t('none') }}</p>
             </div>
           </div>
 
@@ -1166,7 +1166,7 @@
                 <span>#{{ trk.id }} {{ trk.codec }}</span>
                 <span>{{ t('default_label') }}: {{ trk.is_default ? t('yes') : t('no') }} | {{ t('forced_label') }}: {{ trk.is_forced ? t('yes') : t('no') }}</span>
               </div>
-              <p class="text-slate-500 dark:text-slate-400 text-xs">{{ t('language_label') }}: {{ trk.language_name }} ({{ trk.language }}) | {{ t('name_label') }}: {{ trk.track_name || t('none') }}</p>
+              <p class="text-slate-500 dark:text-slate-400 text-xs">{{ t('language_label') }}: {{ trk.language_name }} ({{ trk.language_ietf || trk.language }}) | {{ t('name_label') }}: {{ trk.track_name || t('none') }}</p>
             </div>
           </div>
 
@@ -1215,7 +1215,7 @@
               <div class="flex items-center justify-between">
                 <label class="inline-flex items-center space-x-2 font-semibold text-slate-800 dark:text-slate-200 cursor-pointer">
                   <input type="checkbox" v-model="oldTrackSettings[trk.id].is_enabled" class="w-4 h-4 rounded-[4px] border-slate-300 dark:border-slate-600 text-blue-600 focus:ring-blue-500">
-                  <span>{{ t('track') }} #{{ trk.id }} ({{ trk.codec }})</span>
+                  <span>{{ t('track') }} #{{ trk.id }} ({{ trk.codec }})<span v-if="trk.language_name && trk.language_name !== '[Old]'" class="text-xs font-normal text-slate-500 dark:text-slate-400"> — {{ trk.language_name }} {{ trk.track_name && trk.track_name !== '[Old]' ? ('(' + trk.track_name + ')') : '' }}</span></span>
                 </label>
               </div>
 
@@ -1255,7 +1255,7 @@
               <div class="flex items-center justify-between">
                 <label class="inline-flex items-center space-x-2 font-semibold text-slate-800 dark:text-slate-200 cursor-pointer">
                   <input type="checkbox" v-model="oldTrackSettings[trk.id].is_enabled" class="w-4 h-4 rounded-[4px] border-slate-300 dark:border-slate-600 text-blue-600 focus:ring-blue-500">
-                  <span>{{ t('track') }} #{{ trk.id }} ({{ trk.codec }})</span>
+                  <span>{{ t('track') }} #{{ trk.id }} ({{ trk.codec }})<span v-if="trk.language_name && trk.language_name !== '[Old]'" class="text-xs font-normal text-slate-500 dark:text-slate-400"> — {{ trk.language_name }} {{ trk.track_name && trk.track_name !== '[Old]' ? ('(' + trk.track_name + ')') : '' }}</span></span>
                 </label>
               </div>
 

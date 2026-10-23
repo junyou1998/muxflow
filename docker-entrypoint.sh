@@ -1,6 +1,10 @@
 #!/bin/bash
 set -e
 
+# Enforce UTF-8 encoding across all processes
+export LANG=C.UTF-8
+export LC_ALL=C.UTF-8
+
 # Default to Unraid nobody:users (99:100) if not specified
 PUID=${PUID:-99}
 PGID=${PGID:-100}

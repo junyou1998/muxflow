@@ -1,7 +1,9 @@
 FROM python:3.11-slim-bookworm
 
-# Avoid interactive prompts during package installation
-ENV DEBIAN_FRONTEND=noninteractive \
+# Avoid interactive prompts during package installation and enforce UTF-8 locale
+ENV LANG=C.UTF-8 \
+    LC_ALL=C.UTF-8 \
+    DEBIAN_FRONTEND=noninteractive \
     PYTHONUNBUFFERED=1 \
     PORT=5800 \
     HOST=0.0.0.0 \

@@ -109,6 +109,84 @@ class TestAPIEndpoints(unittest.TestCase):
         self.assertEqual(res.status_code, 200)
         self.assertEqual(res.json()["total_jobs"], 0)
 
+    def test_chinese_track_identification(self):
+        from app.services.mkv_service import MKVService
+        fake_raw = {
+            "container": {"type": "matroska", "recognized": True, "supported": True},
+            "tracks": [
+                {
+                    "id": 0,
+                    "type": "video",
+                    "codec": "AVC/H.264",
+                    "properties": {}
+                },
+                {
+                    "id": 1,
+                    "type": "subtitles",
+                    "codec": "SubRip/SRT",
+                    "properties": {
+                        "language": "chi",
+                        "language_ietf": "zh-Hant",
+                        "track_name": "繁體中文"
+                    }
+                },
+                {
+                    "id": 2,
+                    "type": "subtitles",
+                    "codec": "SubRip/SRT",
+                    "properties": {
+                        "language": "chi",
+                        "language_ietf": "zh-Hans",
+                        "track_name": "簡體中文"
+                    }
+                },
+                {
+                    "id": 3,
+                    "type": "subtitles",
+                    "codec": "SubRip/SRT",
+                    "properties": {
+                        "language": "chi",
+                        "track_name": "TC"
+                    }
+                }
+            ],
+            "attachments": [],
+            "chapters": []
+        }
+        info = MKVService._format_raw_info("/fake/video.mkv", fake_raw)
+        subs = info["subtitles"]
+        self.assertEqual(len(subs), 3)
+        # Track 1: zh-Hant
+        self.assertIn("Traditional", subs[0]["language_name"])
+        self.assertEqual(subs[0]["track_name"], "繁體中文")
+        # Track 2: zh-Hans
+        self.assertIn("Simplified", subs[1]["language_name"])
+        self.assertEqual(subs[1]["track_name"], "簡體中文")
+        # Track 3: TC (Heuristic)
+        self.assertIn("Traditional", subs[2]["language_name"])
+
+    @patch("app.api.videos.MKVService.get_file_info")
+    def test_batch_analyze_chinese_subtitles(self, mock_info):
+        mock_info.return_value = {
+            "videos": [{"id": 0, "codec": "AVC/H.264"}],
+            "audios": [{"id": 1, "codec": "AAC", "language": "jpn", "language_name": "Japanese", "track_name": "Main Audio"}],
+            "subtitles": [
+                {"id": 2, "codec": "SubRip/SRT", "language": "chi", "language_ietf": "zh-Hant", "language_name": "Traditional Chinese (繁體中文)", "track_name": "繁中"},
+                {"id": 3, "codec": "SubRip/SRT", "language": "chi", "language_ietf": "zh-Hans", "language_name": "Simplified Chinese (簡體中文)", "track_name": "簡中"}
+            ],
+            "attachments": [],
+            "chapters": []
+        }
+        res = self.client.post("/api/videos/analyze_tracks", json={"file_paths": ["/storage/ep01.mkv"]})
+        self.assertEqual(res.status_code, 200)
+        data = res.json()
+        sub_langs = data["subtitles"]["languages"]
+        sub_names = data["subtitles"]["names"]
+        self.assertIn("Traditional Chinese (繁體中文)", sub_langs)
+        self.assertIn("Simplified Chinese (簡體中文)", sub_langs)
+        self.assertIn("繁中", sub_names)
+        self.assertIn("簡中", sub_names)
+
 if __name__ == "__main__":
     unittest.main()
 

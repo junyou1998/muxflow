@@ -72,6 +72,10 @@ def analyze_batch_tracks(req: BatchTracksRequest):
                     sub_langs.add(s["language_name"])
                 if s.get("track_name"):
                     sub_names.add(s["track_name"])
+                elif s.get("language_ietf") in ["zh-Hant", "zh-TW", "zh-HK"]:
+                    sub_names.add("繁中")
+                elif s.get("language_ietf") in ["zh-Hans", "zh-CN", "zh-SG"]:
+                    sub_names.add("簡中")
                 grouped_tracks["subtitles"][str(s["id"])].append(s)
         except Exception:
             continue
@@ -82,15 +86,18 @@ def analyze_batch_tracks(req: BatchTracksRequest):
             first = t_list[0]
             # Check if all files have the same properties
             same_name = all(x.get("track_name") == first.get("track_name") for x in t_list)
-            same_lang = all(x.get("language") == first.get("language") for x in t_list)
+            first_lang_id = first.get("language_ietf") or first.get("language")
+            same_lang = all((x.get("language_ietf") or x.get("language")) == first_lang_id for x in t_list)
+            same_lang_name = all(x.get("language_name") == first.get("language_name") for x in t_list)
             same_default = all(x.get("is_default") == first.get("is_default") for x in t_list)
             same_forced = all(x.get("is_forced") == first.get("is_forced") for x in t_list)
 
             res.append({
                 "id": t_id,
                 "track_name": first.get("track_name") if same_name else "[Old]",
-                "language": first.get("language") if same_lang else "[Old]",
-                "language_name": first.get("language_name") if same_lang else "[Old]",
+                "language": first_lang_id if same_lang else "[Old]",
+                "language_name": first.get("language_name") if same_lang_name else "[Old]",
+                "language_ietf": first.get("language_ietf", ""),
                 "is_default": 2 if same_default and first.get("is_default") else (0 if same_default and not first.get("is_default") else 1),
                 "is_forced": 2 if same_forced and first.get("is_forced") else (0 if same_forced and not first.get("is_forced") else 1),
                 "is_enabled": True,
