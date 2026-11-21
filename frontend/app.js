@@ -172,7 +172,166 @@ const I18N = {
     collapse_all_names: "收起全部檔名",
     click_to_expand: "點擊查看完整檔名",
     click_to_collapse: "點擊收起檔名",
-  },
+      // ---- Redesign (v2 layout) ----
+    app_tagline: "MKV 批次封裝",
+    steps_nav: "步驟",
+    step_source: "影片",
+    step_tracks: "軌道",
+    step_output: "輸出",
+    step_queue: "佇列",
+    settings_title: "設定",
+    preset: "預設集",
+    summary_selected: "已選 {n} / {total} 部",
+    summary_no_folder: "尚未選擇資料夾",
+    summary_changes: "{n} 項軌道變更",
+    summary_unchanged: "軌道不變",
+    summary_pending: "{n} 個任務待處理",
+    summary_jobs: "{n} 個任務",
+    lane_video: "視訊",
+    lane_audio: "音軌",
+    lane_subtitle: "字幕",
+    source_title: "選擇影片",
+    source_lede: "指定伺服器上的資料夾，勾選這次要處理的影片。",
+    source_folder: "影片資料夾",
+    folder_placeholder: "/storage/動畫/...",
+    rescan: "重新掃描",
+    browse_folder: "瀏覽",
+    scan_options: "掃描選項",
+    extensions: "副檔名",
+    fps_override: "影格率覆寫",
+    select_all: "全選",
+    selected_of: "已選 {n} / {total}",
+    empty_videos_title: "還沒有影片",
+    empty_videos_desc: "按「瀏覽」選一個資料夾，或確認副檔名篩選有包含你的檔案格式。",
+    layout_differs: "軌道結構不同",
+    track_details: "軌道資訊",
+    tracks_title: "調整軌道",
+    tracks_lede: "改名、改語言、設定預設或移除軌道，會套用到已選的 {n} 部影片。",
+    refresh_tracks: "重新分析",
+    go_select_videos: "去選擇影片",
+    no_selected_for_tracks: "先勾選要處理的影片",
+    by_position_title: "依軌道位置",
+    modify_old_tracks_desc: "對應每部影片中「同類型的第 N 條」，例如第 2 條音軌。其他軌道多寡不影響對應。",
+    keep_track: "保留",
+    remove_track: "移除",
+    keep_short: "不變",
+    mixed_language: "語言不一",
+    analyzing_tracks: "正在分析軌道…",
+    rules_title: "規則",
+    track_rules_desc: "依語言或名稱找出軌道，不管它在第幾條。規則會蓋過上面依位置的設定。",
+    add_rule: "新增規則",
+    rule_n: "規則 {n}",
+    rule_enabled: "啟用規則",
+    rule_when: "符合條件",
+    rule_then: "要做的事",
+    track_type: "軌道類型",
+    rule_type_any: "音軌與字幕",
+    rule_match_lang: "語言是",
+    rule_match_name: "名稱包含",
+    any_name: "不限",
+    rule_modify: "修改",
+    rule_remove: "移除軌道",
+    rule_set_name: "名稱改為",
+    rule_set_lang: "語言改為",
+    no_rules_hint: "例如：所有日語音軌改名為「日語」並設為預設。",
+    filters_title: "篩選與預設軌",
+    filters_desc: "只留下需要的軌道，或指定哪一條預設播放。",
+    only_keep_those_audios: "只保留部分音軌",
+    only_keep_those_subtitles: "只保留部分字幕",
+    only_keep_desc: "沒有被選到的軌道會在輸出時移除。",
+    by_language: "依語言",
+    by_name: "依名稱",
+    by_track_id: "依軌道 ID",
+    make_this_audio_default: "指定預設音軌",
+    make_this_subtitle_default: "指定預設字幕",
+    make_default_desc: "符合的軌道設為預設，其餘取消預設。",
+    select_track: "選擇軌道",
+    filter_needs_pick: "還沒選擇任何項目，這個篩選不會套用。",
+    output_title: "輸出設定",
+    output_lede: "決定檔案存到哪裡，以及封裝時的處理方式。",
+    save_to: "儲存方式",
+    write_new: "存成新檔",
+    write_overwrite: "覆蓋原檔",
+    output_folder: "輸出資料夾",
+    same_dir_hint: "輸出資料夾和來源相同，檔名會自動加上 _muxed，不會蓋掉原檔。",
+    overwrite_warning: "封裝成功後會直接取代原始檔案，無法復原。",
+    processing_title: "處理選項",
+    use_mkvpropedit: "可行時原地快速修改",
+    mkvpropedit_desc: "只改名稱、語言或旗標時，直接修改原檔，不重新封裝，幾秒內完成。",
+    add_crc32: "檔名加上 CRC32",
+    add_crc_desc: "完成後計算校驗碼，附加在檔名後，例如 [A1B2C3D4]。",
+    remove_old_crc: "移除舊的 CRC32",
+    remove_crc_desc: "先清掉檔名中原有的 [XXXXXXXX]。",
+    abort_on_errors: "出錯時停止整個佇列",
+    abort_desc: "關閉時，失敗的任務會被跳過，其餘繼續。",
+    attachments_title: "字型與附件",
+    attachments_desc: "從資料夾加入字型（.ttf、.otf）或封面，會附加到每部影片。",
+    attachments_folder: "附件資料夾",
+    n_files: "{n} 個檔案",
+    clear_all: "全部移除",
+    discard_old_attachments: "移除影片原有的附件",
+    discard_att_desc: "只保留這次加入的附件。",
+    allow_duplicate_attachments: "允許重複的附件",
+    dup_att_desc: "同名附件已存在時仍再加入一份。",
+    queue_title: "封裝佇列",
+    queue_lede: "加入任務、開始處理，並查看每部影片的進度。",
+    done_of: "已完成 {n} / {total}",
+    add_n_to_queue: "加入已選影片（{n}）",
+    add_to_queue: "加入佇列",
+    start_muxing: "開始封裝",
+    pause: "暫停",
+    resume: "繼續",
+    stop: "停止",
+    clear_queue: "清空佇列",
+    queue_empty_title: "佇列是空的",
+    queue_empty_desc: "在「影片」勾選要處理的檔案，再按「加入佇列」或「開始封裝」。",
+    in_place_edit: "原地修改",
+    remove_job: "移除任務",
+    muxing: "封裝中",
+    paused: "已暫停",
+    nothing_selected: "尚未選擇影片",
+    n_videos_selected: "已選 {n} 部影片",
+    n_videos: "{n} 部影片",
+    to_folder: "輸出到 {dir}",
+    status_idle: "閒置",
+    status_running: "封裝中",
+    status_paused: "已暫停",
+    status_stopped: "已停止",
+    status_pending: "等待中",
+    status_completed: "完成",
+    status_failed: "失敗",
+    status_cancelled: "已取消",
+    appearance_and_language: "外觀與語言",
+    theme_setting: "主題",
+    language_setting: "介面語言",
+    light_mode: "淺色",
+    dark_mode: "深色",
+    default_folders: "預設資料夾",
+    default_folders_desc: "每次開啟 MuxFlow 時預先帶入的路徑。",
+    default_video_dir: "影片資料夾",
+    default_output_dir: "輸出資料夾",
+    save_settings: "儲存設定",
+    presets_management: "預設集",
+    presets_desc: "預設集會記住輸出選項、篩選與規則，可以依壓制組或格式切換。",
+    presets_count: "共 {n} 個預設集，目前使用「{name}」。",
+    manage_presets: "管理預設集",
+    default_preset: "預設",
+    save_current_as_preset: "把目前設定存成新預設集",
+    preset_name_placeholder: "例如：某字幕組 1080p",
+    save: "儲存",
+    delete: "刪除",
+    close: "關閉",
+    cancel: "取消",
+    go_up: "上一層",
+    select_server_folder: "選擇資料夾",
+    select_this_folder: "選擇這個資料夾",
+    empty_folder: "這個資料夾是空的",
+    same_dir_protect_title: "輸出到同一個資料夾",
+    same_dir_protect_action: "輸出資料夾與來源相同。為了不蓋掉原檔，新檔名會加上 _muxed。",
+    example: "例如",
+    agree_add_muxed_and_queue: "加上 _muxed 並加入佇列",
+    agree_add_muxed_and_start: "加上 _muxed 並開始",
+},
   en: {
     subtitle: "Streamlined MKV Batch Muxing Suite",
     tab_videos: "Videos",
@@ -344,6 +503,165 @@ const I18N = {
     collapse_all_names: "Collapse All",
     click_to_expand: "Click to expand full filename",
     click_to_collapse: "Click to collapse filename",
+    // ---- Redesign (v2 layout) ----
+    app_tagline: "MKV batch muxing",
+    steps_nav: "Steps",
+    step_source: "Videos",
+    step_tracks: "Tracks",
+    step_output: "Output",
+    step_queue: "Queue",
+    settings_title: "Settings",
+    preset: "Preset",
+    summary_selected: "{n} of {total} selected",
+    summary_no_folder: "No folder yet",
+    summary_changes: "{n} track changes",
+    summary_unchanged: "Tracks unchanged",
+    summary_pending: "{n} jobs waiting",
+    summary_jobs: "{n} jobs",
+    lane_video: "Video",
+    lane_audio: "Audio",
+    lane_subtitle: "Subtitles",
+    source_title: "Choose videos",
+    source_lede: "Pick a folder on the server and tick the videos to process.",
+    source_folder: "Video folder",
+    folder_placeholder: "/storage/anime/...",
+    rescan: "Rescan",
+    browse_folder: "Browse",
+    scan_options: "Scan options",
+    extensions: "File types",
+    fps_override: "Frame rate override",
+    select_all: "Select all",
+    selected_of: "{n} of {total} selected",
+    empty_videos_title: "No videos yet",
+    empty_videos_desc: "Use Browse to pick a folder, or check that the file type filter includes your format.",
+    layout_differs: "Different layout",
+    track_details: "Track details",
+    tracks_title: "Edit tracks",
+    tracks_lede: "Rename, relabel, set defaults or remove tracks across the {n} selected videos.",
+    refresh_tracks: "Re-analyze",
+    go_select_videos: "Choose videos",
+    no_selected_for_tracks: "Select videos to process first",
+    by_position_title: "By position",
+    modify_old_tracks_desc: "Matches the n-th track of each type in every video, e.g. the 2nd audio track, however many other tracks a file has.",
+    keep_track: "Keep",
+    remove_track: "Remove",
+    keep_short: "Unchanged",
+    mixed_language: "Mixed languages",
+    analyzing_tracks: "Analyzing tracks…",
+    rules_title: "Rules",
+    track_rules_desc: "Find tracks by language or name wherever they sit. Rules win over the position settings above.",
+    add_rule: "Add rule",
+    rule_n: "Rule {n}",
+    rule_enabled: "Rule enabled",
+    rule_when: "Matches",
+    rule_then: "Action",
+    track_type: "Track type",
+    rule_type_any: "Audio and subtitles",
+    rule_match_lang: "Language is",
+    rule_match_name: "Name contains",
+    any_name: "Any",
+    rule_modify: "Modify",
+    rule_remove: "Remove track",
+    rule_set_name: "Rename to",
+    rule_set_lang: "Set language",
+    no_rules_hint: "For example: rename every Japanese audio track to \"Japanese\" and make it default.",
+    filters_title: "Filters and default track",
+    filters_desc: "Keep only the tracks you need, or choose which one plays by default.",
+    only_keep_those_audios: "Keep only some audio tracks",
+    only_keep_those_subtitles: "Keep only some subtitles",
+    only_keep_desc: "Tracks you don't pick are removed from the output.",
+    by_language: "By language",
+    by_name: "By name",
+    by_track_id: "By track ID",
+    make_this_audio_default: "Set default audio",
+    make_this_subtitle_default: "Set default subtitles",
+    make_default_desc: "Matching tracks become default; others lose the default flag.",
+    select_track: "Choose a track",
+    filter_needs_pick: "Nothing picked yet, so this filter won't apply.",
+    output_title: "Output",
+    output_lede: "Where files are saved and how they're processed.",
+    save_to: "Save as",
+    write_new: "New file",
+    write_overwrite: "Replace original",
+    output_folder: "Output folder",
+    same_dir_hint: "Output folder matches the source, so new files get a _muxed suffix and originals stay untouched.",
+    overwrite_warning: "Originals are replaced once muxing succeeds. This can't be undone.",
+    processing_title: "Processing",
+    use_mkvpropedit: "Edit in place when possible",
+    mkvpropedit_desc: "When only names, languages or flags change, edit the file directly instead of remuxing. Takes seconds.",
+    add_crc32: "Add CRC32 to file name",
+    add_crc_desc: "Appends a checksum after muxing, like [A1B2C3D4].",
+    remove_old_crc: "Remove old CRC32",
+    remove_crc_desc: "Strips an existing [XXXXXXXX] from the name first.",
+    abort_on_errors: "Stop the queue on errors",
+    abort_desc: "When off, failed jobs are skipped and the rest continue.",
+    attachments_title: "Fonts and attachments",
+    attachments_desc: "Add fonts (.ttf, .otf) or cover art from a folder to every video.",
+    attachments_folder: "Attachments folder",
+    n_files: "{n} files",
+    clear_all: "Remove all",
+    discard_old_attachments: "Remove existing attachments",
+    discard_att_desc: "Keep only the attachments added here.",
+    allow_duplicate_attachments: "Allow duplicate attachments",
+    dup_att_desc: "Add a file even if one with the same name exists.",
+    queue_title: "Queue",
+    queue_lede: "Add jobs, start processing and follow each video's progress.",
+    done_of: "{n} of {total} done",
+    add_n_to_queue: "Add selected ({n})",
+    add_to_queue: "Add to queue",
+    start_muxing: "Start muxing",
+    pause: "Pause",
+    resume: "Resume",
+    stop: "Stop",
+    clear_queue: "Clear queue",
+    queue_empty_title: "The queue is empty",
+    queue_empty_desc: "Tick files under Videos, then choose Add to queue or Start muxing.",
+    in_place_edit: "Edited in place",
+    remove_job: "Remove job",
+    muxing: "Muxing",
+    paused: "Paused",
+    nothing_selected: "No videos selected",
+    n_videos_selected: "{n} videos selected",
+    n_videos: "{n} videos",
+    to_folder: "to {dir}",
+    status_idle: "Idle",
+    status_running: "Running",
+    status_paused: "Paused",
+    status_stopped: "Stopped",
+    status_pending: "Waiting",
+    status_completed: "Done",
+    status_failed: "Failed",
+    status_cancelled: "Cancelled",
+    appearance_and_language: "Appearance and language",
+    theme_setting: "Theme",
+    language_setting: "Language",
+    light_mode: "Light",
+    dark_mode: "Dark",
+    default_folders: "Default folders",
+    default_folders_desc: "Paths filled in each time MuxFlow opens.",
+    default_video_dir: "Video folder",
+    default_output_dir: "Output folder",
+    save_settings: "Save settings",
+    presets_management: "Presets",
+    presets_desc: "A preset remembers output options, filters and rules, so you can switch per release group or format.",
+    presets_count: "{n} presets, using \"{name}\".",
+    manage_presets: "Manage presets",
+    default_preset: "Default",
+    save_current_as_preset: "Save current settings as a preset",
+    preset_name_placeholder: "e.g. Group X 1080p",
+    save: "Save",
+    delete: "Delete",
+    close: "Close",
+    cancel: "Cancel",
+    go_up: "Up one level",
+    select_server_folder: "Choose a folder",
+    select_this_folder: "Use this folder",
+    empty_folder: "This folder is empty",
+    same_dir_protect_title: "Saving to the same folder",
+    same_dir_protect_action: "The output folder is the source folder. To keep originals safe, new files get a _muxed suffix.",
+    example: "Example",
+    agree_add_muxed_and_queue: "Add _muxed and queue",
+    agree_add_muxed_and_start: "Add _muxed and start",
   }
 };
 
@@ -387,13 +705,19 @@ const app = createApp({
       setTheme(theme.value === "dark" ? "light" : "dark");
     };
 
-    const activeTab = ref("videos");
-    const tabs = computed(() => [
-      { id: "videos", name: "tab_videos", icon: "film" },
-      { id: "attachments", name: "tab_attachments", icon: "paperclip" },
-      { id: "mux_setting", name: "tab_mux_setting", icon: "sliders" },
-      { id: "settings", name: "tab_settings", icon: "settings" },
-    ]);
+    // Workflow steps: source -> tracks -> output -> queue. "settings" is reached from the gear.
+    const activeTab = ref("source");
+    const steps = [
+      { id: "source", name: "step_source", icon: "folder-open" },
+      { id: "tracks", name: "step_tracks", icon: "audio-lines" },
+      { id: "output", name: "step_output", icon: "package" },
+      { id: "queue", name: "step_queue", icon: "list-checks" },
+    ];
+    const goTo = (id) => {
+      activeTab.value = id;
+      nextTick(() => window.scrollTo(0, 0));
+    };
+    const showPresetSheet = ref(false);
 
     // Data lists
     const allLanguages = ref([]);
@@ -514,6 +838,8 @@ const app = createApp({
     });
     // Keyed by "<type>:<n>" (n-th audio / subtitle track of each file), not global track ID.
     const oldTrackSettings = reactive({});
+    // path -> [{type, language, name, codec}] for the lane bar on each file row
+    const fileTracks = reactive({});
     let analyzedPathsKey = "";
     // Rule-based modifications: match tracks by type / language / name in every file.
     const trackRules = ref([]);
@@ -604,13 +930,7 @@ const app = createApp({
       else arr.push(item);
     };
 
-    const jumpToMuxSetting = () => {
-      activeTab.value = 'mux_setting';
-      nextTick(() => {
-        const el = document.getElementById('job-queue-section');
-        if (el) el.scrollIntoView({ behavior: 'smooth' });
-      });
-    };
+    const jumpToMuxSetting = () => goTo('queue');
 
     // File Picker Functions
     const openFilePicker = async (target) => {
@@ -779,6 +1099,7 @@ const app = createApp({
         });
         if (res.ok) {
           batchAnalysis.value = await res.json();
+          Object.assign(fileTracks, batchAnalysis.value.file_tracks || {});
           const allTrks = [
             ...batchAnalysis.value.bulk_tracks.videos,
             ...batchAnalysis.value.bulk_tracks.audios,
@@ -866,9 +1187,71 @@ const app = createApp({
 
     const flagStateLabel = (v) => (v === 2 ? t("yes") : v === 0 ? t("no") : t("mixed"));
 
-    const openModifyOldTracksModal = async () => {
-      await analyzeTracks();
-      showModifyTracksModal.value = true;
+    const openModifyOldTracksModal = () => goTo('tracks');
+
+    const laneLabel = (trk) => {
+      const kind = t("lane_" + trk.type);
+      return [kind, trk.language, trk.name].filter(Boolean).join(" ");
+    };
+
+    // Overwrite / new-file choice shown as a segmented control
+    const layoutOf = (path) => (fileTracks[path] || []).map(trk => trk.type[0].toUpperCase()).join(" ");
+    // Flag files whose track layout differs from the most common one among the analyzed files
+    const isOddLayout = (path) => {
+      const groups = batchAnalysis.value.layout_groups || [];
+      return groups.length > 1 && !!fileTracks[path] && layoutOf(path) !== groups[0].layout;
+    };
+
+    const writeMode = computed(() => (overwriteSource.value ? "overwrite" : "new"));
+    const setWriteMode = (mode) => {
+      if (mode === "overwrite" && !overwriteSource.value) {
+        overwriteSource.value = true;
+        onOverwriteChange();
+      } else if (mode === "new") {
+        overwriteSource.value = false;
+      }
+    };
+
+    // A filter only takes effect once something is picked: an empty "keep only" list
+    // would otherwise strip every track of that type.
+    const keepAudiosActive = computed(() => onlyKeepAudiosEnabled.value &&
+      (onlyKeepAudiosIds.value.length + onlyKeepAudiosLangs.value.length + onlyKeepAudiosNames.value.length) > 0);
+    const keepSubtitlesActive = computed(() => onlyKeepSubtitlesEnabled.value &&
+      (onlyKeepSubtitlesIds.value.length + onlyKeepSubtitlesLangs.value.length + onlyKeepSubtitlesNames.value.length) > 0);
+    const audioDefaultActive = computed(() => makeAudioDefaultEnabled.value && !!makeAudioDefaultTarget.value);
+    const subtitleDefaultActive = computed(() => makeSubtitleDefaultEnabled.value && !!makeSubtitleDefaultTarget.value);
+    const filtersCount = computed(() =>
+      [keepAudiosActive.value, keepSubtitlesActive.value, audioDefaultActive.value, subtitleDefaultActive.value].filter(Boolean).length
+    );
+    const trackChangesCount = computed(() => modifiedTracksCount.value + filtersCount.value);
+
+    const runningJob = computed(() => (queueState.value.jobs || []).find(j => j.status === "running") || null);
+    const isQueueActive = computed(() => ["running", "paused"].includes(queueState.value.status));
+
+    const stepSummary = (id) => {
+      if (id === "source") return videosList.value.length ? tf("summary_selected", { n: selectedVideosCount.value, total: videosList.value.length }) : t("summary_no_folder");
+      if (id === "tracks") return trackChangesCount.value ? tf("summary_changes", { n: trackChangesCount.value }) : t("summary_unchanged");
+      if (id === "output") return overwriteSource.value ? t("write_overwrite") : (outputDir.value || "").split("/").filter(Boolean).pop() || "/";
+      if (id === "queue") {
+        if (isQueueActive.value) return `${overallProgressPercent.value}%`;
+        return pendingJobsCount.value ? tf("summary_pending", { n: pendingJobsCount.value }) : tf("summary_jobs", { n: (queueState.value.jobs || []).length });
+      }
+      return "";
+    };
+    const stepBadge = (id) => {
+      if (id === "source") return selectedVideosCount.value || "";
+      if (id === "tracks") return trackChangesCount.value || "";
+      if (id === "queue") return isQueueActive.value ? `${overallProgressPercent.value}%` : (pendingJobsCount.value || "");
+      return "";
+    };
+    const currentPresetName = computed(() => {
+      const p = presets.value.find(x => x.id === currentPresetId.value);
+      if (!p || p.id === "default") return t("default_preset");
+      return p.name;
+    });
+    const choosePreset = (id) => {
+      currentPresetId.value = id;
+      onPresetChange();
     };
 
     const showMuxedConfirmModal = ref(false);
@@ -931,17 +1314,17 @@ const app = createApp({
         use_mkvpropedit: useMkvpropedit.value,
         add_crc: addCrc.value,
         remove_old_crc: removeOldCrc.value,
-        only_keep_audios_enabled: onlyKeepAudiosEnabled.value,
+        only_keep_audios_enabled: keepAudiosActive.value,
         only_keep_audios_ids: onlyKeepAudiosIds.value,
         only_keep_audios_langs: onlyKeepAudiosLangs.value,
         only_keep_audios_names: onlyKeepAudiosNames.value,
-        only_keep_subtitles_enabled: onlyKeepSubtitlesEnabled.value,
+        only_keep_subtitles_enabled: keepSubtitlesActive.value,
         only_keep_subtitles_ids: onlyKeepSubtitlesIds.value,
         only_keep_subtitles_langs: onlyKeepSubtitlesLangs.value,
         only_keep_subtitles_names: onlyKeepSubtitlesNames.value,
-        make_audio_default_enabled: makeAudioDefaultEnabled.value,
+        make_audio_default_enabled: audioDefaultActive.value,
         make_audio_default_target: makeAudioDefaultTarget.value,
-        make_subtitle_default_enabled: makeSubtitleDefaultEnabled.value,
+        make_subtitle_default_enabled: subtitleDefaultActive.value,
         make_subtitle_default_target: makeSubtitleDefaultTarget.value,
       }));
 
@@ -1305,7 +1688,7 @@ const app = createApp({
       toggleLang,
       setLang,
       activeTab,
-      tabs,
+
       allLanguages,
       presets,
       currentPresetId,
@@ -1381,6 +1764,27 @@ const app = createApp({
       inspectVideo,
       analyzeTracks,
       openModifyOldTracksModal,
+      steps,
+      goTo,
+      showPresetSheet,
+      fileTracks,
+      laneLabel,
+      isOddLayout,
+      isSameDirWithoutOverwrite,
+      writeMode,
+      setWriteMode,
+      filtersCount,
+      keepAudiosActive,
+      keepSubtitlesActive,
+      audioDefaultActive,
+      subtitleDefaultActive,
+      trackChangesCount,
+      runningJob,
+      isQueueActive,
+      stepSummary,
+      stepBadge,
+      currentPresetName,
+      choosePreset,
       trackRules,
       addTrackRule,
       removeTrackRule,
@@ -1433,12 +1837,14 @@ app.component('icon', {
       const pascal = toPascal(props.name);
       const iconDef = window.lucide.icons[pascal] || window.lucide.icons[props.name];
       if (!iconDef) return '';
+      // lucide >= 0.4xx wraps nodes as ["svg", attrs, children]; older builds are a flat list
+      const nodes = iconDef[0] === 'svg' ? iconDef[2] : iconDef;
       let children = '';
-      for (const [tag, attrs] of iconDef) {
+      for (const [tag, attrs] of nodes) {
         const attrStr = Object.entries(attrs).map(([k, v]) => `${k}="${v}"`).join(' ');
         children += `<${tag} ${attrStr}></${tag}>`;
       }
-      return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="${props.class}">${children}</svg>`;
+      return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="${props.class}">${children}</svg>`;
     };
 
     return { getSvg };

@@ -36,6 +36,7 @@ def analyze_batch_tracks(req: BatchTracksRequest):
             "subtitles": {"ids": [], "languages": [], "names": []},
             "bulk_tracks": {"videos": [], "audios": [], "subtitles": []},
             "total_files": 0,
+            "file_tracks": {},
             "layout_groups": [],
         }
 
@@ -57,6 +58,8 @@ def analyze_batch_tracks(req: BatchTracksRequest):
     }
     layout_groups: Dict[str, List[str]] = {}
     analyzed_files: List[str] = []
+    # Per-file track lanes for the file list, e.g. [{"type": "audio", "language": "jpn"}, ...]
+    file_tracks: Dict[str, List[Dict[str, Any]]] = {}
 
     for path in req.file_paths:
         try:
@@ -68,6 +71,16 @@ def analyze_batch_tracks(req: BatchTracksRequest):
             ["V"] * len(info["videos"]) + ["A"] * len(info["audios"]) + ["S"] * len(info["subtitles"])
         )
         layout_groups.setdefault(layout, []).append(os.path.basename(path))
+        file_tracks[path] = [
+            {
+                "type": kind,
+                "language": t.get("language_ietf") or t.get("language") or "",
+                "name": t.get("track_name") or "",
+                "codec": t.get("codec") or "",
+            }
+            for kind, key in (("video", "videos"), ("audio", "audios"), ("subtitle", "subtitles"))
+            for t in info[key]
+        ]
 
         for idx, v in enumerate(info["videos"]):
             grouped_tracks["videos"][idx].append((path, v))
@@ -152,6 +165,7 @@ def analyze_batch_tracks(req: BatchTracksRequest):
             "subtitles": summarize_tracks("subtitle", grouped_tracks["subtitles"]),
         },
         "total_files": total_files,
+        "file_tracks": file_tracks,
         "layout_groups": [
             {"layout": layout, "count": len(files), "files": files}
             for layout, files in sorted(layout_groups.items(), key=lambda x: -len(x[1]))

@@ -133,6 +133,8 @@ class TestBatchAnalysis(unittest.TestCase):
         self.assertEqual(subs[0]["file_count"], 2)
         self.assertEqual(data["total_files"], 2)
         self.assertEqual(len(data["layout_groups"]), 2)
+        self.assertEqual([t["type"] for t in data["file_tracks"]["/v/b.mkv"]], ["video", "audio", "audio", "subtitle"])
+        self.assertEqual(data["file_tracks"]["/v/a.mkv"][2]["language"], "zh-Hant")
 
 
 if __name__ == "__main__":
