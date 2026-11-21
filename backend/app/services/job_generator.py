@@ -7,6 +7,59 @@ from .mkv_service import MKVService
 
 CRC_REGEX = re.compile(r"\[[0-9A-Fa-f]{8}\]")
 
+TYPE_KEYS = (("video", "videos"), ("audio", "audios"), ("subtitle", "subtitles"))
+ZH_HANT_TAGS = ("zh-Hant", "zh-TW", "zh-HK")
+ZH_HANS_TAGS = ("zh-Hans", "zh-CN", "zh-SG")
+
+
+def _is_keep(value: Any) -> bool:
+    """A modification value that means "leave the existing property alone"."""
+    return value in (None, "", "[Old]")
+
+
+def _flag_value(value: Any) -> Optional[bool]:
+    """Normalize tri-state flags: True/2 -> set, False/0 -> clear, anything else -> keep."""
+    if value is True or value == 2:
+        return True
+    if value is False or value == 0:
+        return False
+    return None
+
+
+def _track_matches_lang(track: Dict[str, Any], wanted: str) -> bool:
+    wanted = wanted.strip().lower()
+    if not wanted:
+        return True
+    candidates = [track.get("language"), track.get("language_ietf"), track.get("language_name")]
+    if any(c and str(c).lower() == wanted for c in candidates):
+        return True
+    try:
+        code = get_language_code(wanted, None)
+    except Exception:
+        code = None
+    return bool(code) and str(track.get("language") or "").lower() == str(code).lower()
+
+
+def _track_display_name(track: Dict[str, Any]) -> str:
+    if track.get("track_name"):
+        return track["track_name"]
+    ietf = track.get("language_ietf")
+    if ietf in ZH_HANT_TAGS:
+        return "繁中"
+    if ietf in ZH_HANS_TAGS:
+        return "簡中"
+    return ""
+
+
+def _track_matches_rule(track: Dict[str, Any], rule: Dict[str, Any]) -> bool:
+    if not _track_matches_lang(track, str(rule.get("match_language") or "")):
+        return False
+    wanted_name = str(rule.get("match_name") or "").strip().lower()
+    if wanted_name and wanted_name not in _track_display_name(track).lower():
+        return False
+    return True
+
+
 class JobGenerator:
     @staticmethod
     def clean_old_crc(filename: str) -> str:
@@ -14,6 +67,64 @@ class JobGenerator:
         name, ext = os.path.splitext(filename)
         cleaned_name = CRC_REGEX.sub("", name).strip()
         return cleaned_name + ext
+
+    @staticmethod
+    def resolve_track_mods(job_config: Dict[str, Any], source_info: Dict[str, Any]) -> Dict[str, Dict[str, Any]]:
+        """
+        Translate batch-level track modifications into per-file modifications keyed by
+        this file's real mkvmerge track ID.
+
+        Two sources, applied in order (later wins per field):
+        1. `old_tracks_modifications`: keyed by "<type>:<n>" = the n-th (0-based) track
+           of that type in each file, so files with different layouts still line up by
+           "2nd audio track" rather than by global track ID. Plain numeric keys are
+           legacy global IDs and only apply to a track of the same ID.
+        2. `track_rules`: match by type / language / name, e.g. "every jpn audio track".
+        """
+        resolved: Dict[str, Dict[str, Any]] = {}
+
+        def merge(track_id: str, mod: Dict[str, Any]) -> None:
+            target = resolved.setdefault(track_id, {})
+            for field in ("track_name", "language"):
+                if not _is_keep(mod.get(field)):
+                    target[field] = mod[field]
+            for field in ("is_default", "is_forced"):
+                flag = _flag_value(mod.get(field))
+                if flag is not None:
+                    target[field] = flag
+            if mod.get("is_enabled") in (False, 0):
+                target["is_enabled"] = False
+
+        mods = job_config.get("old_tracks_modifications") or {}
+        for type_key, list_key in TYPE_KEYS:
+            for index, track in enumerate(source_info.get(list_key, [])):
+                t_id = str(track["id"])
+                if t_id in mods:
+                    merge(t_id, mods[t_id])
+                key = f"{type_key}:{index}"
+                if key in mods:
+                    merge(t_id, mods[key])
+
+        for rule in job_config.get("track_rules") or []:
+            if not rule or rule.get("enabled") is False:
+                continue
+            rule_type = rule.get("track_type") or "any"
+            for type_key, list_key in TYPE_KEYS:
+                if type_key == "video" and rule_type != "video":
+                    continue
+                if rule_type not in ("any", type_key):
+                    continue
+                for track in source_info.get(list_key, []):
+                    if _track_matches_rule(track, rule):
+                        merge(str(track["id"]), {
+                            "track_name": rule.get("set_name"),
+                            "language": rule.get("set_language"),
+                            "is_default": rule.get("set_default"),
+                            "is_forced": rule.get("set_forced"),
+                            "is_enabled": False if rule.get("remove") else True,
+                        })
+
+        return {t_id: mod for t_id, mod in resolved.items() if mod}
 
     @staticmethod
     def can_use_mkvpropedit(job_config: Dict[str, Any], source_info: Dict[str, Any]) -> bool:
@@ -43,10 +154,9 @@ class JobGenerator:
             return False
 
         # Check if old tracks were disabled (deleted)
-        old_track_mods = job_config.get("old_tracks_modifications", {})
-        for track_id, mod in old_track_mods.items():
-            if mod.get("is_enabled") is False or mod.get("is_enabled") == 0:
-                return False
+        resolved = JobGenerator.resolve_track_mods(job_config, source_info)
+        if any(mod.get("is_enabled") is False for mod in resolved.values()):
+            return False
 
         if job_config.get("video_fps") and job_config.get("video_fps") != "Default":
             return False
@@ -147,33 +257,25 @@ class JobGenerator:
         source_path: str
     ) -> List[str]:
         cmd = [MKVPROPEDIT_PATH, source_path]
-        old_mods = job_config.get("old_tracks_modifications", {})
+        old_mods = JobGenerator.resolve_track_mods(job_config, source_info)
 
         # Track property modifications
         for track in source_info["videos"] + source_info["audios"] + source_info["subtitles"]:
             t_id = str(track["id"])
             if t_id in old_mods:
                 mod = old_mods[t_id]
-                # Selector in mkvpropedit: track:s<id+1> or track:@<uid> or track:<id+1>
-                # Using track:<id+1> (mkvpropedit uses 1-based track numbers)
+                # mkvpropedit uses 1-based track numbers: track:<id+1>
                 track_selector = f"track:{int(t_id) + 1}"
-                
-                if mod.get("track_name") and mod["track_name"] != "[Old]":
+
+                if "track_name" in mod:
                     cmd.extend(["--edit", track_selector, "--set", f"name={mod['track_name']}"])
-                
-                if mod.get("language") and mod["language"] != "[Old]":
+                if "language" in mod:
                     lang_code = get_language_code(mod["language"], mod["language"])
                     cmd.extend(["--edit", track_selector, "--set", f"language={lang_code}"])
-
-                if mod.get("is_default") in [2, True]:
-                    cmd.extend(["--edit", track_selector, "--set", "flag-default=1"])
-                elif mod.get("is_default") in [0, False]:
-                    cmd.extend(["--edit", track_selector, "--set", "flag-default=0"])
-
-                if mod.get("is_forced") in [2, True]:
-                    cmd.extend(["--edit", track_selector, "--set", "flag-forced=1"])
-                elif mod.get("is_forced") in [0, False]:
-                    cmd.extend(["--edit", track_selector, "--set", "flag-forced=0"])
+                if "is_default" in mod:
+                    cmd.extend(["--edit", track_selector, "--set", f"flag-default={1 if mod['is_default'] else 0}"])
+                if "is_forced" in mod:
+                    cmd.extend(["--edit", track_selector, "--set", f"flag-forced={1 if mod['is_forced'] else 0}"])
 
         # Chapters
         if job_config.get("chapter_file"):
@@ -207,30 +309,26 @@ class JobGenerator:
             cmd.extend(["--default-duration", f"{video_id}:{fps}"])
 
         # 2. Old tracks options (language, name, default, forced)
-        old_mods = job_config.get("old_tracks_modifications", {})
+        old_mods = JobGenerator.resolve_track_mods(job_config, source_info)
         for track in source_info["videos"] + source_info["audios"] + source_info["subtitles"]:
             t_id = str(track["id"])
             if t_id in old_mods:
                 mod = old_mods[t_id]
-                if mod.get("track_name") and mod["track_name"] != "[Old]":
+                if "track_name" in mod:
                     cmd.extend(["--track-name", f"{t_id}:{mod['track_name']}"])
-                if mod.get("language") and mod["language"] != "[Old]":
+                if "language" in mod:
                     lang_code = get_language_code(mod["language"], mod["language"])
                     cmd.extend(["--language", f"{t_id}:{lang_code}"])
-                if mod.get("is_default") in [2, True]:
-                    cmd.extend(["--default-track-flag", f"{t_id}:yes"])
-                elif mod.get("is_default") in [0, False]:
-                    cmd.extend(["--default-track-flag", f"{t_id}:no"])
-                if mod.get("is_forced") in [2, True]:
-                    cmd.extend(["--forced-display-flag", f"{t_id}:yes"])
-                elif mod.get("is_forced") in [0, False]:
-                    cmd.extend(["--forced-display-flag", f"{t_id}:no"])
+                if "is_default" in mod:
+                    cmd.extend(["--default-track-flag", f"{t_id}:{'yes' if mod['is_default'] else 'no'}"])
+                if "is_forced" in mod:
+                    cmd.extend(["--forced-display-flag", f"{t_id}:{'yes' if mod['is_forced'] else 'no'}"])
 
         # 3. Track filtering: Which old tracks to keep?
         # Videos: keep all enabled
         enabled_video_ids = [
             str(v["id"]) for v in source_info["videos"]
-            if old_mods.get(str(v["id"]), {}).get("is_enabled", True) not in [False, 0]
+            if old_mods.get(str(v["id"]), {}).get("is_enabled", True) is not False
         ]
         if enabled_video_ids:
             cmd.extend(["-d", ",".join(enabled_video_ids)])
@@ -241,7 +339,7 @@ class JobGenerator:
         enabled_audio_ids = []
         for a in source_info["audios"]:
             a_id = str(a["id"])
-            if old_mods.get(a_id, {}).get("is_enabled", True) in [False, 0]:
+            if old_mods.get(a_id, {}).get("is_enabled", True) is False:
                 continue
             if job_config.get("only_keep_audios_enabled"):
                 keep_ids = job_config.get("only_keep_audios_ids", [])
@@ -268,7 +366,7 @@ class JobGenerator:
         enabled_sub_ids = []
         for s in source_info["subtitles"]:
             s_id = str(s["id"])
-            if old_mods.get(s_id, {}).get("is_enabled", True) in [False, 0]:
+            if old_mods.get(s_id, {}).get("is_enabled", True) is False:
                 continue
             if job_config.get("only_keep_subtitles_enabled"):
                 keep_ids = job_config.get("only_keep_subtitles_ids", [])

@@ -1,3 +1,4 @@
+import os
 from collections import defaultdict
 from typing import Any, Dict, List
 from fastapi import APIRouter, HTTPException
@@ -34,6 +35,8 @@ def analyze_batch_tracks(req: BatchTracksRequest):
             "audios": {"ids": [], "languages": [], "names": []},
             "subtitles": {"ids": [], "languages": [], "names": []},
             "bulk_tracks": {"videos": [], "audios": [], "subtitles": []},
+            "total_files": 0,
+            "layout_groups": [],
         }
 
     audio_ids = set()
@@ -44,64 +47,91 @@ def analyze_batch_tracks(req: BatchTracksRequest):
     sub_langs = set()
     sub_names = set()
 
-    # Track by track_id across videos for bulk modification
-    # e.g. { "video": { "0": [track_obj, ...], "1": [...] } }
+    # Group tracks by (type, n-th track of that type) across videos, so a file with an
+    # extra audio track doesn't shift every later track out of alignment.
+    # e.g. { "audios": { 0: [(file, track), ...], 1: [...] } }
     grouped_tracks = {
         "videos": defaultdict(list),
         "audios": defaultdict(list),
         "subtitles": defaultdict(list),
     }
+    layout_groups: Dict[str, List[str]] = {}
+    analyzed_files: List[str] = []
 
     for path in req.file_paths:
         try:
             info = MKVService.get_file_info(path)
-            for v in info["videos"]:
-                grouped_tracks["videos"][str(v["id"])].append(v)
-            for a in info["audios"]:
-                t_id = f"Track {int(a['id']):02d}"
-                audio_ids.add(t_id)
-                if a.get("language_name") and a["language_name"] != "Undetermined":
-                    audio_langs.add(a["language_name"])
-                if a.get("track_name"):
-                    audio_names.add(a["track_name"])
-                grouped_tracks["audios"][str(a["id"])].append(a)
-            for s in info["subtitles"]:
-                t_id = f"Track {int(s['id']):02d}"
-                sub_ids.add(t_id)
-                if s.get("language_name") and s["language_name"] != "Undetermined":
-                    sub_langs.add(s["language_name"])
-                if s.get("track_name"):
-                    sub_names.add(s["track_name"])
-                elif s.get("language_ietf") in ["zh-Hant", "zh-TW", "zh-HK"]:
-                    sub_names.add("繁中")
-                elif s.get("language_ietf") in ["zh-Hans", "zh-CN", "zh-SG"]:
-                    sub_names.add("簡中")
-                grouped_tracks["subtitles"][str(s["id"])].append(s)
         except Exception:
             continue
+        analyzed_files.append(path)
+        layout = " ".join(
+            ["V"] * len(info["videos"]) + ["A"] * len(info["audios"]) + ["S"] * len(info["subtitles"])
+        )
+        layout_groups.setdefault(layout, []).append(os.path.basename(path))
 
-    def summarize_tracks(track_dict):
+        for idx, v in enumerate(info["videos"]):
+            grouped_tracks["videos"][idx].append((path, v))
+        for idx, a in enumerate(info["audios"]):
+            audio_ids.add(f"Track {int(a['id']):02d}")
+            if a.get("language_name") and a["language_name"] != "Undetermined":
+                audio_langs.add(a["language_name"])
+            if a.get("track_name"):
+                audio_names.add(a["track_name"])
+            grouped_tracks["audios"][idx].append((path, a))
+        for idx, s in enumerate(info["subtitles"]):
+            sub_ids.add(f"Track {int(s['id']):02d}")
+            if s.get("language_name") and s["language_name"] != "Undetermined":
+                sub_langs.add(s["language_name"])
+            if s.get("track_name"):
+                sub_names.add(s["track_name"])
+            elif s.get("language_ietf") in ["zh-Hant", "zh-TW", "zh-HK"]:
+                sub_names.add("繁中")
+            elif s.get("language_ietf") in ["zh-Hans", "zh-CN", "zh-SG"]:
+                sub_names.add("簡中")
+            grouped_tracks["subtitles"][idx].append((path, s))
+
+    total_files = len(analyzed_files)
+
+    def summarize_tracks(type_key: str, track_dict):
         res = []
-        for t_id, t_list in sorted(track_dict.items(), key=lambda x: int(x[0])):
-            first = t_list[0]
-            # Check if all files have the same properties
-            same_name = all(x.get("track_name") == first.get("track_name") for x in t_list)
-            first_lang_id = first.get("language_ietf") or first.get("language")
-            same_lang = all((x.get("language_ietf") or x.get("language")) == first_lang_id for x in t_list)
-            same_lang_name = all(x.get("language_name") == first.get("language_name") for x in t_list)
-            same_default = all(x.get("is_default") == first.get("is_default") for x in t_list)
-            same_forced = all(x.get("is_forced") == first.get("is_forced") for x in t_list)
+        for idx in sorted(track_dict):
+            entries = track_dict[idx]
+            tracks = [t for _, t in entries]
+            present = {f for f, _ in entries}
+            first = tracks[0]
+
+            def distinct(getter):
+                seen = []
+                for t in tracks:
+                    val = getter(t) or ""
+                    if val not in seen:
+                        seen.append(val)
+                return seen
+
+            names = distinct(lambda t: t.get("track_name"))
+            langs = distinct(lambda t: t.get("language_ietf") or t.get("language"))
+            lang_names = distinct(lambda t: t.get("language_name"))
+            codecs = distinct(lambda t: t.get("codec"))
+            defaults = {bool(t.get("is_default")) for t in tracks}
+            forceds = {bool(t.get("is_forced")) for t in tracks}
 
             res.append({
-                "id": t_id,
-                "track_name": first.get("track_name") if same_name else "[Old]",
-                "language": first_lang_id if same_lang else "[Old]",
-                "language_name": first.get("language_name") if same_lang_name else "[Old]",
+                "id": f"{type_key}:{idx}",
+                "index": idx,
+                "real_ids": sorted({int(t["id"]) for t in tracks}),
+                "file_count": len(present),
+                "total_files": total_files,
+                "missing_files": [os.path.basename(f) for f in analyzed_files if f not in present],
+                "track_name": names[0] if len(names) == 1 else "[Old]",
+                "language": langs[0] if len(langs) == 1 else "[Old]",
+                "language_name": lang_names[0] if len(lang_names) == 1 else "[Old]",
                 "language_ietf": first.get("language_ietf", ""),
-                "is_default": 2 if same_default and first.get("is_default") else (0 if same_default and not first.get("is_default") else 1),
-                "is_forced": 2 if same_forced and first.get("is_forced") else (0 if same_forced and not first.get("is_forced") else 1),
+                "distinct_names": names,
+                "distinct_languages": lang_names,
+                "is_default": 1 if len(defaults) > 1 else (2 if True in defaults else 0),
+                "is_forced": 1 if len(forceds) > 1 else (2 if True in forceds else 0),
                 "is_enabled": True,
-                "codec": first.get("codec", ""),
+                "codec": codecs[0] if len(codecs) == 1 else " / ".join(c for c in codecs if c),
             })
         return res
 
@@ -117,8 +147,13 @@ def analyze_batch_tracks(req: BatchTracksRequest):
             "names": sorted(list(sub_names)),
         },
         "bulk_tracks": {
-            "videos": summarize_tracks(grouped_tracks["videos"]),
-            "audios": summarize_tracks(grouped_tracks["audios"]),
-            "subtitles": summarize_tracks(grouped_tracks["subtitles"]),
-        }
+            "videos": summarize_tracks("video", grouped_tracks["videos"]),
+            "audios": summarize_tracks("audio", grouped_tracks["audios"]),
+            "subtitles": summarize_tracks("subtitle", grouped_tracks["subtitles"]),
+        },
+        "total_files": total_files,
+        "layout_groups": [
+            {"layout": layout, "count": len(files), "files": files}
+            for layout, files in sorted(layout_groups.items(), key=lambda x: -len(x[1]))
+        ],
     }

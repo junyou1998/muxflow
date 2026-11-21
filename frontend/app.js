@@ -1,4 +1,4 @@
-const { createApp, ref, reactive, computed, onMounted, nextTick } = Vue;
+const { createApp, ref, reactive, computed, watch, onMounted, nextTick } = Vue;
 
 const I18N = {
   zh: {
@@ -18,7 +18,7 @@ const I18N = {
     default_fps: "預設 FPS / 時長覆蓋",
     modify_old_tracks: "修改軌道",
     modify_old_tracks_bulk: "修改軌道",
-    modify_old_tracks_desc: "若有多部影片，此處設定會套用到所有來源影片中的對應軌道號碼。",
+    modify_old_tracks_desc: "設定會套用到所有已勾選影片中「同類型的第 N 條軌道」（例如第 2 條音軌），不受其他軌道數量影響。",
     files_found: "已找到檔案",
     total_size: "總容量",
     no_videos_selected: "尚未選擇影片，請點選上方「瀏覽目錄」選擇資料夾",
@@ -116,6 +116,29 @@ const I18N = {
     track_default: "預設",
     track_forced: "強制",
     old_setting: "[保留原設定]",
+    mixed: "混合",
+    keep_original: "保持原樣",
+    current: "目前",
+    files_coverage: "{n}/{total} 部影片有此軌",
+    missing_in: "不存在於：",
+    mixed_values_warn: "各影片此位置的軌道不一致：",
+    layout_mismatch_title: "選取的影片軌道結構不一致",
+    layout_mismatch_desc: "下方依「第 N 條音軌 / 字幕」對應。若同一位置在不同影片是不同語言，建議改用下方「規則」依語言或名稱比對。",
+    nth_audio: "第 {n} 條音軌",
+    nth_subtitle: "第 {n} 條字幕",
+    track_rules: "規則（依語言 / 名稱比對）",
+    track_rules_desc: "規則會套用到每部影片中所有符合條件的軌道，不受軌道位置影響；規則優先於上方的逐軌設定。",
+    add_rule: "新增規則",
+    rule_type_any: "全部",
+    rule_match_lang: "語言符合",
+    rule_match_name: "名稱包含",
+    rule_set_name: "改名為",
+    rule_set_lang: "語言改為",
+    rule_remove: "移除此軌",
+    rule_when: "當",
+    rule_then: "則",
+    no_rules: "尚無規則",
+    no_selected_for_tracks: "請先勾選要處理的影片",
     channels: "聲道",
     info: "資訊",
     track_ids: "軌道 ID",
@@ -167,7 +190,7 @@ const I18N = {
     default_fps: "Default Duration / FPS",
     modify_old_tracks: "Modify Tracks",
     modify_old_tracks_bulk: "Modify Tracks",
-    modify_old_tracks_desc: "These bulk modifications apply to matching track numbers across all source videos.",
+    modify_old_tracks_desc: "Settings apply to the n-th track of the same type (e.g. 2nd audio track) in every selected video, regardless of how many other tracks each file has.",
     files_found: "Files Found",
     total_size: "Total Size",
     no_videos_selected: "No videos selected. Click 'Browse Folder' above.",
@@ -265,6 +288,29 @@ const I18N = {
     track_default: "Default",
     track_forced: "Forced",
     old_setting: "[Keep Old]",
+    mixed: "Mixed",
+    keep_original: "Keep original",
+    current: "Current",
+    files_coverage: "In {n}/{total} videos",
+    missing_in: "Missing in: ",
+    mixed_values_warn: "Tracks at this position differ between videos: ",
+    layout_mismatch_title: "Selected videos have different track layouts",
+    layout_mismatch_desc: "Tracks below are matched by \"n-th audio / subtitle\". If the same position holds different languages across videos, use Rules below to match by language or name instead.",
+    nth_audio: "Audio #{n}",
+    nth_subtitle: "Subtitle #{n}",
+    track_rules: "Rules (match by language / name)",
+    track_rules_desc: "Rules apply to every matching track in each video regardless of position, and take precedence over per-track settings above.",
+    add_rule: "Add rule",
+    rule_type_any: "Any",
+    rule_match_lang: "Language is",
+    rule_match_name: "Name contains",
+    rule_set_name: "Rename to",
+    rule_set_lang: "Set language",
+    rule_remove: "Remove track",
+    rule_when: "When",
+    rule_then: "Then",
+    no_rules: "No rules yet",
+    no_selected_for_tracks: "Select videos to process first",
     channels: "Channels",
     info: "Info",
     track_ids: "Track IDs",
@@ -305,6 +351,7 @@ const app = createApp({
   setup() {
     const lang = ref(localStorage.getItem("lang") || "zh");
     const t = (key) => I18N[lang.value]?.[key] || key;
+    const tf = (key, params = {}) => Object.entries(params).reduce((str, [k, v]) => str.replaceAll(`{${k}}`, v), t(key));
     const setLang = (val) => {
       lang.value = val;
       localStorage.setItem("lang", val);
@@ -461,9 +508,28 @@ const app = createApp({
     const batchAnalysis = ref({
       audios: { ids: [], languages: [], names: [] },
       subtitles: { ids: [], languages: [], names: [] },
-      bulk_tracks: { videos: [], audios: [], subtitles: [] }
+      bulk_tracks: { videos: [], audios: [], subtitles: [] },
+      total_files: 0,
+      layout_groups: []
     });
+    // Keyed by "<type>:<n>" (n-th audio / subtitle track of each file), not global track ID.
     const oldTrackSettings = reactive({});
+    let analyzedPathsKey = "";
+    // Rule-based modifications: match tracks by type / language / name in every file.
+    const trackRules = ref([]);
+    const newTrackRule = () => ({
+      enabled: true,
+      track_type: "audio",
+      match_language: "",
+      match_name: "",
+      set_name: "",
+      set_language: "",
+      set_default: "keep",
+      set_forced: "keep",
+      remove: false,
+    });
+    const addTrackRule = () => trackRules.value.push(newTrackRule());
+    const removeTrackRule = (idx) => trackRules.value.splice(idx, 1);
 
     // Modals
     const showFilePickerModal = ref(false);
@@ -696,11 +762,16 @@ const app = createApp({
       }
     };
 
-    // Analyze tracks across batch
+    // Analyze tracks across the selected videos (the ones that will actually be processed)
     const analyzeTracks = async () => {
-      if (videosList.value.length === 0) return;
+      const paths = selectedVideos.value.map(v => v.path);
+      const pathsKey = paths.join("\n");
+      // A different set of files means positions may mean something else: drop stale edits.
+      if (pathsKey !== analyzedPathsKey) {
+        for (const k of Object.keys(oldTrackSettings)) delete oldTrackSettings[k];
+        analyzedPathsKey = pathsKey;
+      }
       try {
-        const paths = videosList.value.map(v => v.path);
         const res = await fetch("/api/videos/analyze_tracks", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -716,11 +787,11 @@ const app = createApp({
           for (const t of allTrks) {
             if (!oldTrackSettings[t.id]) {
               oldTrackSettings[t.id] = {
-                is_enabled: t.is_enabled,
-                track_name: t.track_name,
-                language: t.language,
-                is_default: t.is_default,
-                is_forced: t.is_forced,
+                is_enabled: true,
+                track_name: t.track_name === "[Old]" ? "" : (t.track_name || ""),
+                language: "[Old]",
+                is_default: "keep",
+                is_forced: "keep",
               };
             }
           }
@@ -729,6 +800,71 @@ const app = createApp({
         console.error("Failed to analyze tracks:", e);
       }
     };
+
+    let analyzeTimer = null;
+    watch(
+      () => selectedVideos.value.map(v => v.path).join("\n"),
+      () => {
+        clearTimeout(analyzeTimer);
+        analyzeTimer = setTimeout(analyzeTracks, 400);
+      }
+    );
+
+    const findTrackSummary = (id) => {
+      const b = batchAnalysis.value.bulk_tracks;
+      return [...b.videos, ...b.audios, ...b.subtitles].find(t => t.id === id);
+    };
+
+    const flagFromSelect = (v) => (v === "yes" ? true : v === "no" ? false : null);
+
+    // Only send what the user actually changed, so untouched fields never overwrite per-file values.
+    const buildTrackModifications = () => {
+      const mods = {};
+      for (const [id, st] of Object.entries(oldTrackSettings)) {
+        const summary = findTrackSummary(id);
+        if (!summary) continue;
+        const mod = {};
+        if (st.is_enabled === false) mod.is_enabled = false;
+        const origName = summary.track_name === "[Old]" ? "" : (summary.track_name || "");
+        if (st.track_name && st.track_name !== origName) mod.track_name = st.track_name;
+        if (st.language && st.language !== "[Old]") mod.language = st.language;
+        const d = flagFromSelect(st.is_default);
+        if (d !== null) mod.is_default = d;
+        const f = flagFromSelect(st.is_forced);
+        if (f !== null) mod.is_forced = f;
+        if (Object.keys(mod).length) mods[id] = mod;
+      }
+      return mods;
+    };
+
+    const buildTrackRules = () => trackRules.value
+      .filter(r => r.enabled)
+      .map(r => ({
+        enabled: true,
+        track_type: r.track_type,
+        match_language: r.match_language.trim(),
+        match_name: r.match_name.trim(),
+        set_name: r.set_name,
+        set_language: r.set_language,
+        set_default: flagFromSelect(r.set_default),
+        set_forced: flagFromSelect(r.set_forced),
+        remove: !!r.remove,
+      }));
+
+    const modifiedTracksCount = computed(() => {
+      // Touch reactive deps so the badge updates live.
+      let n = 0;
+      for (const [id, st] of Object.entries(oldTrackSettings)) {
+        const summary = findTrackSummary(id);
+        if (!summary) continue;
+        const origName = summary.track_name === "[Old]" ? "" : (summary.track_name || "");
+        if (st.is_enabled === false || (st.track_name && st.track_name !== origName) ||
+            (st.language && st.language !== "[Old]") || st.is_default !== "keep" || st.is_forced !== "keep") n++;
+      }
+      return n + trackRules.value.filter(r => r.enabled).length;
+    });
+
+    const flagStateLabel = (v) => (v === 2 ? t("yes") : v === 0 ? t("no") : t("mixed"));
 
     const openModifyOldTracksModal = async () => {
       await analyzeTracks();
@@ -782,7 +918,8 @@ const app = createApp({
         source_video: v.path,
         output_dir: outputDir.value || videoDir.value,
         video_fps: videoFps.value,
-        old_tracks_modifications: oldTrackSettings,
+        old_tracks_modifications: buildTrackModifications(),
+        track_rules: buildTrackRules(),
         subtitles: [],
         audios: [],
         chapter_file: null,
@@ -958,6 +1095,7 @@ const app = createApp({
         makeAudioDefaultTarget.value = s.make_audio_default_target || "";
         makeSubtitleDefaultEnabled.value = s.make_subtitle_default_enabled || false;
         makeSubtitleDefaultTarget.value = s.make_subtitle_default_target || "";
+        trackRules.value = (s.track_rules || []).map(r => ({ ...newTrackRule(), ...r }));
       }
     };
 
@@ -984,6 +1122,7 @@ const app = createApp({
         make_audio_default_target: makeAudioDefaultTarget.value,
         make_subtitle_default_enabled: makeSubtitleDefaultEnabled.value,
         make_subtitle_default_target: makeSubtitleDefaultTarget.value,
+        track_rules: trackRules.value.map(r => ({ ...r })),
       };
 
       try {
@@ -1242,6 +1381,12 @@ const app = createApp({
       inspectVideo,
       analyzeTracks,
       openModifyOldTracksModal,
+      trackRules,
+      addTrackRule,
+      removeTrackRule,
+      modifiedTracksCount,
+      flagStateLabel,
+      tf,
       startMuxingBatch,
       stopMuxingBatch,
       pauseQueue,

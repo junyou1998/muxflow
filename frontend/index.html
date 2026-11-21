@@ -108,10 +108,11 @@
                   <span>{{ t('refresh') }}</span>
                 </button>
                 <button @click="openModifyOldTracksModal"
-                        :disabled="videosList.length === 0"
+                        :disabled="selectedVideosCount === 0"
                         class="btn-press flex items-center space-x-1.5 bg-amber-500 hover:bg-amber-600 disabled:opacity-35 disabled:cursor-not-allowed text-white px-3.5 py-2 rounded-lg text-sm font-bold shadow-xs transition">
                   <icon name="settings-2" class="w-4 h-4"></icon>
                   <span>{{ t('modify_old_tracks') }}</span>
+                  <span v-if="modifiedTracksCount > 0" class="ml-1 bg-white/90 text-amber-700 text-[11px] font-bold rounded-full px-1.5 leading-4">{{ modifiedTracksCount }}</span>
                 </button>
               </div>
             </div>
@@ -1205,83 +1206,172 @@
             {{ t('modify_old_tracks_desc') }}
           </p>
 
-          <!-- Audio Tracks Modifications -->
-          <div class="space-y-2">
-            <h4 class="font-bold text-emerald-600 dark:text-emerald-400 uppercase text-xs flex items-center gap-1.5">
-              <icon name="volume-2" class="w-4 h-4"></icon>
-              <span>{{ t('audio_tracks') }}</span>
+          <div v-if="batchAnalysis.total_files === 0" class="text-center text-slate-500 dark:text-slate-400 text-sm py-6">
+            {{ t('no_selected_for_tracks') }}
+          </div>
+
+          <!-- Layout mismatch warning -->
+          <div v-if="batchAnalysis.layout_groups && batchAnalysis.layout_groups.length > 1" class="p-3 rounded-xl border border-amber-300/70 dark:border-amber-500/40 bg-amber-50 dark:bg-amber-500/10 text-xs sm:text-sm space-y-1.5">
+            <div class="font-bold text-amber-700 dark:text-amber-300 flex items-center gap-1.5">
+              <icon name="alert-triangle" class="w-4 h-4"></icon>
+              <span>{{ t('layout_mismatch_title') }}</span>
+            </div>
+            <p class="text-amber-800/90 dark:text-amber-200/80">{{ t('layout_mismatch_desc') }}</p>
+            <ul class="space-y-0.5 font-mono text-[11px] sm:text-xs text-amber-900/80 dark:text-amber-100/70">
+              <li v-for="g in batchAnalysis.layout_groups" :key="g.layout" :title="g.files.join('\n')">
+                {{ g.layout }} × {{ g.count }} <span class="opacity-70">({{ g.files.slice(0, 2).join(', ') }}{{ g.files.length > 2 ? ', …' : '' }})</span>
+              </li>
+            </ul>
+          </div>
+
+          <!-- Per-position track modifications (audio, subtitle) -->
+          <div v-for="grp in [
+                 { key: 'audios', title: 'audio_tracks', nth: 'nth_audio', icon: 'volume-2', color: 'text-emerald-600 dark:text-emerald-400' },
+                 { key: 'subtitles', title: 'subtitle_tracks', nth: 'nth_subtitle', icon: 'message-square', color: 'text-amber-600 dark:text-amber-400' }
+               ]" :key="grp.key" v-show="batchAnalysis.bulk_tracks[grp.key].length" class="space-y-2">
+            <h4 :class="grp.color" class="font-bold uppercase text-xs flex items-center gap-1.5">
+              <icon :name="grp.icon" class="w-4 h-4"></icon>
+              <span>{{ t(grp.title) }}</span>
             </h4>
-            <div v-for="trk in batchAnalysis.bulk_tracks.audios" :key="trk.id" class="p-3.5 bg-slate-50 dark:bg-[#151e33] rounded-xl border border-slate-200/80 dark:border-slate-800/80 space-y-2.5">
-              <div class="flex items-center justify-between">
+            <div v-for="trk in batchAnalysis.bulk_tracks[grp.key]" :key="trk.id" v-show="oldTrackSettings[trk.id]"
+                 :class="oldTrackSettings[trk.id] && !oldTrackSettings[trk.id].is_enabled ? 'opacity-60' : ''"
+                 class="p-3.5 bg-slate-50 dark:bg-[#151e33] rounded-xl border border-slate-200/80 dark:border-slate-800/80 space-y-2.5">
+              <template v-if="oldTrackSettings[trk.id]">
+              <div class="flex flex-wrap items-center justify-between gap-2">
                 <label class="inline-flex items-center space-x-2 font-semibold text-slate-800 dark:text-slate-200 cursor-pointer">
                   <input type="checkbox" v-model="oldTrackSettings[trk.id].is_enabled" class="w-4 h-4 rounded-[4px] border-slate-300 dark:border-slate-600 text-blue-600 focus:ring-blue-500">
-                  <span>{{ t('track') }} #{{ trk.id }} ({{ trk.codec }})<span v-if="trk.language_name && trk.language_name !== '[Old]'" class="text-xs font-normal text-slate-500 dark:text-slate-400"> — {{ trk.language_name }} {{ trk.track_name && trk.track_name !== '[Old]' ? ('(' + trk.track_name + ')') : '' }}</span></span>
+                  <span>{{ tf(grp.nth, { n: trk.index + 1 }) }} <span class="text-xs font-normal text-slate-500 dark:text-slate-400">({{ trk.codec }})<template v-if="trk.language_name && trk.language_name !== '[Old]'"> — {{ trk.language_name }}</template><template v-if="trk.track_name && trk.track_name !== '[Old]'"> ({{ trk.track_name }})</template></span></span>
                 </label>
+                <span :title="trk.missing_files.length ? t('missing_in') + trk.missing_files.join(', ') : ''"
+                      :class="trk.file_count < trk.total_files ? 'bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300' : 'bg-slate-200/70 text-slate-600 dark:bg-slate-700/50 dark:text-slate-300'"
+                      class="text-[11px] font-semibold px-2 py-0.5 rounded-full">
+                  {{ tf('files_coverage', { n: trk.file_count, total: trk.total_files }) }}
+                </span>
+              </div>
+              <div v-if="trk.distinct_languages.length > 1 || trk.distinct_names.length > 1" class="text-[11px] sm:text-xs text-amber-700 dark:text-amber-300 flex items-start gap-1">
+                <icon name="alert-triangle" class="w-3.5 h-3.5 mt-px shrink-0"></icon>
+                <span>{{ t('mixed_values_warn') }}{{ (trk.distinct_languages.length > 1 ? trk.distinct_languages : trk.distinct_names).map(x => x || t('none')).join(' / ') }}</span>
+              </div>
+              <div v-if="trk.file_count < trk.total_files" class="text-[11px] text-slate-500 dark:text-slate-400 truncate" :title="trk.missing_files.join('\n')">
+                {{ t('missing_in') }}{{ trk.missing_files.slice(0, 3).join(', ') }}{{ trk.missing_files.length > 3 ? ` … (+${trk.missing_files.length - 3})` : '' }}
               </div>
 
-              <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-xs sm:text-sm">
+              <div class="grid grid-cols-1 sm:grid-cols-4 gap-2.5 text-xs sm:text-sm">
                 <div>
                   <label class="text-slate-600 dark:text-slate-400 block mb-1 font-medium text-xs">{{ t('track_name') }}</label>
-                  <input v-model="oldTrackSettings[trk.id].track_name" :placeholder="t('old_setting')" class="w-full bg-white dark:bg-[#1a243a] border border-slate-200 dark:border-slate-700/80 rounded-lg px-2.5 py-1.5 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-blue-500 text-sm">
+                  <input v-model="oldTrackSettings[trk.id].track_name" :placeholder="trk.track_name === '[Old]' ? t('mixed') + ' · ' + t('keep_original') : t('keep_original')" class="w-full bg-white dark:bg-[#1a243a] border border-slate-200 dark:border-slate-700/80 rounded-lg px-2.5 py-1.5 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-blue-500 text-sm">
                 </div>
                 <div>
                   <label class="text-slate-600 dark:text-slate-400 block mb-1 font-medium text-xs">{{ t('language') }}</label>
                   <select v-model="oldTrackSettings[trk.id].language" class="w-full bg-white dark:bg-[#1a243a] border border-slate-200 dark:border-slate-700/80 rounded-lg px-2.5 py-1.5 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-blue-500 text-sm">
-                    <option value="[Old]">{{ t('old_setting') }}</option>
+                    <option value="[Old]">{{ t('keep_original') }} ({{ trk.language === '[Old]' ? t('mixed') : (trk.language || 'und') }})</option>
                     <option v-for="l in allLanguages" :key="l.code" :value="l.code">{{ l.name }} ({{ l.code }})</option>
                   </select>
                 </div>
-                <div class="flex items-center space-x-3 pt-3 sm:pt-4">
-                  <label class="inline-flex items-center space-x-1.5 cursor-pointer text-slate-700 dark:text-slate-300 text-xs sm:text-sm">
-                    <input type="checkbox" v-model="oldTrackSettings[trk.id].is_default" class="w-4 h-4 rounded-[4px] border-slate-300 dark:border-slate-600 text-blue-600 focus:ring-blue-500">
-                    <span>{{ t('track_default') }}</span>
-                  </label>
-                  <label class="inline-flex items-center space-x-1.5 cursor-pointer text-slate-700 dark:text-slate-300 text-xs sm:text-sm">
-                    <input type="checkbox" v-model="oldTrackSettings[trk.id].is_forced" class="w-4 h-4 rounded-[4px] border-slate-300 dark:border-slate-600 text-blue-600 focus:ring-blue-500">
-                    <span>{{ t('track_forced') }}</span>
-                  </label>
+                <div>
+                  <label class="text-slate-600 dark:text-slate-400 block mb-1 font-medium text-xs">{{ t('track_default') }}</label>
+                  <select v-model="oldTrackSettings[trk.id].is_default" class="w-full bg-white dark:bg-[#1a243a] border border-slate-200 dark:border-slate-700/80 rounded-lg px-2.5 py-1.5 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-blue-500 text-sm">
+                    <option value="keep">{{ t('keep_original') }} ({{ flagStateLabel(trk.is_default) }})</option>
+                    <option value="yes">{{ t('yes') }}</option>
+                    <option value="no">{{ t('no') }}</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="text-slate-600 dark:text-slate-400 block mb-1 font-medium text-xs">{{ t('track_forced') }}</label>
+                  <select v-model="oldTrackSettings[trk.id].is_forced" class="w-full bg-white dark:bg-[#1a243a] border border-slate-200 dark:border-slate-700/80 rounded-lg px-2.5 py-1.5 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-blue-500 text-sm">
+                    <option value="keep">{{ t('keep_original') }} ({{ flagStateLabel(trk.is_forced) }})</option>
+                    <option value="yes">{{ t('yes') }}</option>
+                    <option value="no">{{ t('no') }}</option>
+                  </select>
                 </div>
               </div>
+              </template>
             </div>
           </div>
 
-          <!-- Subtitle Tracks Modifications -->
-          <div class="space-y-2">
-            <h4 class="font-bold text-amber-600 dark:text-amber-400 uppercase text-xs flex items-center gap-1.5">
-              <icon name="message-square" class="w-4 h-4"></icon>
-              <span>{{ t('subtitle_tracks') }}</span>
-            </h4>
-            <div v-for="trk in batchAnalysis.bulk_tracks.subtitles" :key="trk.id" class="p-3.5 bg-slate-50 dark:bg-[#151e33] rounded-xl border border-slate-200/80 dark:border-slate-800/80 space-y-2.5">
-              <div class="flex items-center justify-between">
+          <!-- Rule-based modifications -->
+          <div class="space-y-2 pt-1">
+            <div class="flex items-center justify-between gap-2">
+              <h4 class="font-bold text-blue-600 dark:text-blue-400 uppercase text-xs flex items-center gap-1.5">
+                <icon name="wand-2" class="w-4 h-4"></icon>
+                <span>{{ t('track_rules') }}</span>
+              </h4>
+              <button @click="addTrackRule" class="btn-press text-blue-600 dark:text-blue-400 hover:text-blue-500 text-xs sm:text-sm flex items-center space-x-1 font-semibold">
+                <icon name="plus" class="w-4 h-4"></icon>
+                <span>{{ t('add_rule') }}</span>
+              </button>
+            </div>
+            <p class="text-slate-500 dark:text-slate-400 text-xs">{{ t('track_rules_desc') }}</p>
+            <div v-if="trackRules.length === 0" class="text-xs text-slate-400 dark:text-slate-500 italic">{{ t('no_rules') }}</div>
+            <datalist id="rule-lang-options">
+              <option v-for="l in [...batchAnalysis.audios.languages, ...batchAnalysis.subtitles.languages]" :key="'n-' + l" :value="l"></option>
+              <option v-for="l in allLanguages" :key="'c-' + l.code" :value="l.code">{{ l.name }}</option>
+            </datalist>
+            <div v-for="(rule, ri) in trackRules" :key="ri"
+                 :class="rule.enabled ? '' : 'opacity-60'"
+                 class="p-3.5 bg-blue-50/50 dark:bg-blue-500/5 rounded-xl border border-blue-200/70 dark:border-blue-500/20 space-y-2.5 text-xs sm:text-sm">
+              <div class="flex items-center justify-between gap-2">
                 <label class="inline-flex items-center space-x-2 font-semibold text-slate-800 dark:text-slate-200 cursor-pointer">
-                  <input type="checkbox" v-model="oldTrackSettings[trk.id].is_enabled" class="w-4 h-4 rounded-[4px] border-slate-300 dark:border-slate-600 text-blue-600 focus:ring-blue-500">
-                  <span>{{ t('track') }} #{{ trk.id }} ({{ trk.codec }})<span v-if="trk.language_name && trk.language_name !== '[Old]'" class="text-xs font-normal text-slate-500 dark:text-slate-400"> — {{ trk.language_name }} {{ trk.track_name && trk.track_name !== '[Old]' ? ('(' + trk.track_name + ')') : '' }}</span></span>
+                  <input type="checkbox" v-model="rule.enabled" class="w-4 h-4 rounded-[4px] border-slate-300 dark:border-slate-600 text-blue-600 focus:ring-blue-500">
+                  <span>#{{ ri + 1 }}</span>
                 </label>
+                <button @click="removeTrackRule(ri)" class="btn-press text-slate-400 hover:text-red-500 p-1 rounded-lg">
+                  <icon name="trash-2" class="w-4 h-4"></icon>
+                </button>
               </div>
-
-              <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-xs sm:text-sm">
+              <div class="grid grid-cols-1 sm:grid-cols-[auto_1fr_1fr_1fr] gap-2.5 items-end">
+                <span class="text-[11px] font-bold uppercase text-slate-500 dark:text-slate-400 sm:pb-2">{{ t('rule_when') }}</span>
                 <div>
-                  <label class="text-slate-600 dark:text-slate-400 block mb-1 font-medium text-xs">{{ t('track_name') }}</label>
-                  <input v-model="oldTrackSettings[trk.id].track_name" :placeholder="t('old_setting')" class="w-full bg-white dark:bg-[#1a243a] border border-slate-200 dark:border-slate-700/80 rounded-lg px-2.5 py-1.5 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-blue-500 text-sm">
+                  <label class="text-slate-600 dark:text-slate-400 block mb-1 font-medium text-xs">{{ t('track') }}</label>
+                  <select v-model="rule.track_type" class="w-full bg-white dark:bg-[#1a243a] border border-slate-200 dark:border-slate-700/80 rounded-lg px-2.5 py-1.5 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-blue-500 text-sm">
+                    <option value="audio">{{ t('audio_tracks') }}</option>
+                    <option value="subtitle">{{ t('subtitle_tracks') }}</option>
+                    <option value="any">{{ t('rule_type_any') }}</option>
+                  </select>
                 </div>
                 <div>
-                  <label class="text-slate-600 dark:text-slate-400 block mb-1 font-medium text-xs">{{ t('language') }}</label>
-                  <select v-model="oldTrackSettings[trk.id].language" class="w-full bg-white dark:bg-[#1a243a] border border-slate-200 dark:border-slate-700/80 rounded-lg px-2.5 py-1.5 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-blue-500 text-sm">
-                    <option value="[Old]">{{ t('old_setting') }}</option>
+                  <label class="text-slate-600 dark:text-slate-400 block mb-1 font-medium text-xs">{{ t('rule_match_lang') }}</label>
+                  <input v-model="rule.match_language" list="rule-lang-options" placeholder="jpn / Japanese" class="w-full bg-white dark:bg-[#1a243a] border border-slate-200 dark:border-slate-700/80 rounded-lg px-2.5 py-1.5 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-blue-500 text-sm">
+                </div>
+                <div>
+                  <label class="text-slate-600 dark:text-slate-400 block mb-1 font-medium text-xs">{{ t('rule_match_name') }}</label>
+                  <input v-model="rule.match_name" placeholder="—" class="w-full bg-white dark:bg-[#1a243a] border border-slate-200 dark:border-slate-700/80 rounded-lg px-2.5 py-1.5 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-blue-500 text-sm">
+                </div>
+              </div>
+              <div class="grid grid-cols-1 sm:grid-cols-[auto_1fr_1fr_1fr_1fr] gap-2.5 items-end">
+                <span class="text-[11px] font-bold uppercase text-slate-500 dark:text-slate-400 sm:pb-2">{{ t('rule_then') }}</span>
+                <div>
+                  <label class="text-slate-600 dark:text-slate-400 block mb-1 font-medium text-xs">{{ t('rule_set_name') }}</label>
+                  <input v-model="rule.set_name" :disabled="rule.remove" :placeholder="t('keep_original')" class="w-full bg-white dark:bg-[#1a243a] border border-slate-200 dark:border-slate-700/80 rounded-lg px-2.5 py-1.5 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-blue-500 text-sm disabled:opacity-50">
+                </div>
+                <div>
+                  <label class="text-slate-600 dark:text-slate-400 block mb-1 font-medium text-xs">{{ t('rule_set_lang') }}</label>
+                  <select v-model="rule.set_language" :disabled="rule.remove" class="w-full bg-white dark:bg-[#1a243a] border border-slate-200 dark:border-slate-700/80 rounded-lg px-2.5 py-1.5 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-blue-500 text-sm disabled:opacity-50">
+                    <option value="">{{ t('keep_original') }}</option>
                     <option v-for="l in allLanguages" :key="l.code" :value="l.code">{{ l.name }} ({{ l.code }})</option>
                   </select>
                 </div>
-                <div class="flex items-center space-x-3 pt-3 sm:pt-4">
-                  <label class="inline-flex items-center space-x-1.5 cursor-pointer text-slate-700 dark:text-slate-300 text-xs sm:text-sm">
-                    <input type="checkbox" v-model="oldTrackSettings[trk.id].is_default" class="w-4 h-4 rounded-[4px] border-slate-300 dark:border-slate-600 text-blue-600 focus:ring-blue-500">
-                    <span>{{ t('track_default') }}</span>
-                  </label>
-                  <label class="inline-flex items-center space-x-1.5 cursor-pointer text-slate-700 dark:text-slate-300 text-xs sm:text-sm">
-                    <input type="checkbox" v-model="oldTrackSettings[trk.id].is_forced" class="w-4 h-4 rounded-[4px] border-slate-300 dark:border-slate-600 text-blue-600 focus:ring-blue-500">
-                    <span>{{ t('track_forced') }}</span>
-                  </label>
+                <div>
+                  <label class="text-slate-600 dark:text-slate-400 block mb-1 font-medium text-xs">{{ t('track_default') }}</label>
+                  <select v-model="rule.set_default" :disabled="rule.remove" class="w-full bg-white dark:bg-[#1a243a] border border-slate-200 dark:border-slate-700/80 rounded-lg px-2.5 py-1.5 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-blue-500 text-sm disabled:opacity-50">
+                    <option value="keep">{{ t('keep_original') }}</option>
+                    <option value="yes">{{ t('yes') }}</option>
+                    <option value="no">{{ t('no') }}</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="text-slate-600 dark:text-slate-400 block mb-1 font-medium text-xs">{{ t('track_forced') }}</label>
+                  <select v-model="rule.set_forced" :disabled="rule.remove" class="w-full bg-white dark:bg-[#1a243a] border border-slate-200 dark:border-slate-700/80 rounded-lg px-2.5 py-1.5 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-blue-500 text-sm disabled:opacity-50">
+                    <option value="keep">{{ t('keep_original') }}</option>
+                    <option value="yes">{{ t('yes') }}</option>
+                    <option value="no">{{ t('no') }}</option>
+                  </select>
                 </div>
               </div>
+              <label class="inline-flex items-center space-x-2 cursor-pointer text-red-600 dark:text-red-400 font-semibold">
+                <input type="checkbox" v-model="rule.remove" class="w-4 h-4 rounded-[4px] border-slate-300 dark:border-slate-600 text-red-600 focus:ring-red-500">
+                <span>{{ t('rule_remove') }}</span>
+              </label>
             </div>
           </div>
         </div>
